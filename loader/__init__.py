@@ -1,8 +1,16 @@
 from openpyxl.reader.excel import load_workbook
 from openpyxl.workbook.workbook import Workbook
-from openpyxl.worksheet.worksheet import Worksheet
+import sqlite3
 
 from loader.model import InterviewResult
+from loader.sql import(
+    DEFINE_TABLE as SQL_DEFINE_TABLE,
+    APPEND_ROW as SQL_APPEND_ROW
+)
+
+
+class StorageError(Exception):
+    pass
 
 
 def load_result(file_path: str, respondent_id: str) -> InterviewResult:
@@ -41,7 +49,7 @@ def parse_chronic_fatigue(wb: Workbook, result: InterviewResult):
 def parse_professional_burnout(wb: Workbook, result: InterviewResult):
     sheet = wb["Профессиональное выгорание"]
     col = (ord('C') - ord('A')) + 1  # 1-numeration is used
-    result.emotioanl_exhaustion = sheet.cell(row=26, column=col).value
+    result.emotional_exhaustion = sheet.cell(row=26, column=col).value
     result.depersonalization = sheet.cell(row=27, column=col).value
     result.prof_reduction = sheet.cell(row=28, column=col).value
     result.burnout_index = sheet.cell(row=29, column=col).value
@@ -70,5 +78,28 @@ def parse_irrational_setups(wb: Workbook, result: InterviewResult):
     result.selfesteem = sheet.cell(row=58, column=col).value
 
 
-def append_to_db(result: InterviewResult):
-    pass
+def append_to_db(filename: str, result: InterviewResult):
+    try:
+        connection = create_database(filename)
+    except sqlite3.DatabaseError as e:
+        raise StorageError(f"DB error: {e}")
+    except Exception as e:
+        raise StorageError(f"Internal db error: {e}")
+    cursor = connection.cursor()
+    try:
+        cursor.execute(SQL_APPEND_ROW, result.__dict__)
+        connection.commit()
+    except sqlite3.OperationalError as e:
+        raise StorageError(f"SQL error: {e}")
+    except sqlite3.DatabaseError as e:
+        raise StorageError(f"DB error: {e}")
+    except Exception as e:
+        raise StorageError(f"Internal db error: {e}")
+
+
+def create_database(filename: str) -> sqlite3.Connection:
+    connection = sqlite3.connect(filename)
+    cursor = connection.cursor()
+    res = cursor.execute(SQL_DEFINE_TABLE)
+    connection.commit()
+    return connection
