@@ -39,6 +39,7 @@ def main():
         append_to_db(database, interview_result)
     except StorageError as e:
         print("Failed to add interview result due to storage error: {e}")
+        return 1
 
 
 if __name__ == "__main__":
