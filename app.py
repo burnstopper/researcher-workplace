@@ -9,7 +9,7 @@ def main():
     parser = ArgumentParser("python data-loader-xlsx.py", description="Console application for passing data from xlsx book to sqlite database")
     parser.add_argument("-s" , "--srcdir", default="./")
     parser.add_argument("-d", "--dstdir", default="./")
-    parser.add_argument("respondent", type=int)
+    parser.add_argument("respondent", help="integer respondent identifier", type=int)
     ns = parser.parse_args(sys.argv[1:])
     srcdir = os.path.realpath(os.path.abspath(ns.srcdir))
     dstdir = os.path.realpath(os.path.abspath(ns.dstdir))
