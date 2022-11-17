@@ -21,7 +21,6 @@ def load_result(file_path: str, respondent_id: str) -> InterviewResult:
     parse_professional_burnout(book, result)
     parse_coping_strategy(book, result)
     parse_irrational_setups(book, result)
-    print(repr(result), result)
     return result
 
 
