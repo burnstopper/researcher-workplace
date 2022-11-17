@@ -28,7 +28,7 @@ class InterviewResult:
     motivation_dec: int
     
     # Эмоциональное истощение 
-    emotioanl_exhaustion: int
+    emotional_exhaustion: int
     
     # Деперсонализация
     depersonalization: int
