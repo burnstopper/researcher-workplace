@@ -18,7 +18,9 @@ def main():
     parser.add_argument("-f" , "--file")
     parser.add_argument("-d", "--dir")
     parser.add_argument("-o", "--outdir", default="./")
+    parser.add_argument("-k", "--key", help="Key of the source", type=str, dest="key", default=None)
     ns = parser.parse_args(sys.argv[1:])
+    source_key = ns.key
 
     if (ns.file is not None) and (ns.dir is not None):
         print(f"Cannot run if both of arguments -f and -d at the same time")
@@ -56,7 +58,7 @@ def main():
 
     for respondent_file in get_respondents_files(filepath=srcfile, dirpath=srcdir):
         respondent_id = extract_respondent_id(respondent_file)
-        interview_result = load_result(respondent_file, respondent_id=respondent_id)
+        interview_result = load_result(respondent_file, key=source_key, respondent_id=respondent_id)
         try:
             append_to_db(database, interview_result)
         except StorageError as e:

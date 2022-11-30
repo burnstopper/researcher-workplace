@@ -13,9 +13,9 @@ class StorageError(Exception):
     pass
 
 
-def load_result(file_path: str, respondent_id: str) -> InterviewResult:
+def load_result(file_path: str, key: str, respondent_id: str) -> InterviewResult:
     book = load_workbook(file_path, read_only=True, data_only=True)
-    result = InterviewResult(respondent_id)
+    result = InterviewResult(respondent_id, key)
     parse_questionary(book, result)
     parse_chronic_fatigue(book, result)
     parse_professional_burnout(book, result)

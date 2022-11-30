@@ -6,6 +6,7 @@ class InterviewResult:
     
     id: str
     date: Date
+    source: str
     age: int
     gender: str
     position: str
@@ -79,8 +80,9 @@ class InterviewResult:
     selfesteem: int
     
 
-    def __init__(self, id: str):
+    def __init__(self, id: str, source: str):
         self.id = id
+        self.source = source
         # TODO: may be in future it is worth to set up default 'None' values for known attributes.
         # Some validation can be implemented later.
 

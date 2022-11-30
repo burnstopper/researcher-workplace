@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS results(
     obligation_to_others INTEGER,
     frustration_tolerance INTEGER,
     selfesteem INTEGER,
+    source VARCHAR,
     schema_version VARCHAR,
     PRIMARY KEY(respondent_id, date)
 )
@@ -58,6 +59,7 @@ VALUES(
     :obligation_to_others,
     :frustration_tolerance,
     :selfesteem,
+    :source,
     '{SCHEMA_VERSION}'
 )
 """
