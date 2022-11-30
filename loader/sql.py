@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS results(
 
 APPEND_ROW = \
 f"""
-INSERT INTO results
+INSERT OR IGNORE INTO results
 VALUES(
     :id,
     :date,
