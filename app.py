@@ -1,48 +1,90 @@
 from argparse import ArgumentParser
+from enum import Enum
 import os
 import sys
+from typing import List
 
 from loader import load_result, append_to_db, StorageError
 
 
+class Result(Enum):
+    SUCCESS               = 0
+    BAD_ARGUMENTS         = 1
+    GENERIC_ERROR         = 2
+
+
 def main():
     parser = ArgumentParser("python data-loader-xlsx.py", description="Console application for passing data from xlsx book to sqlite database")
-    parser.add_argument("-s" , "--srcdir", default="./")
-    parser.add_argument("-d", "--dstdir", default="./")
-    parser.add_argument("respondent", help="integer respondent identifier", type=int)
+    parser.add_argument("-f" , "--file")
+    parser.add_argument("-d", "--dir")
+    parser.add_argument("-o", "--outdir", default="./")
     ns = parser.parse_args(sys.argv[1:])
-    srcdir = os.path.realpath(os.path.abspath(ns.srcdir))
-    dstdir = os.path.realpath(os.path.abspath(ns.dstdir))
-    database = os.path.join(dstdir, "results.sqlite")
-    respondent_index = ns.respondent
-    respondent_id = f'Респондент_{respondent_index:03d}'
-    respondent_file = os.path.join(srcdir, srcdir, f'{respondent_id}.xlsx')
-    
-    if not os.path.exists(respondent_file):
-        print(f"Respondent file {respondent_file} does not exist")
-        return 1
-    
-    if not os.path.isfile(respondent_file):
-        print(f"{respondent_file} is not a file")
-        return 1
-    
-    if not os.path.exists(dstdir):
-        print(f"Directory {dstdir} does not exist")
-        return 1
-    
-    if not os.path.isdir(dstdir):
-        print(f"File {dstdir} is not a directory")
-        return 1
 
-    interview_result = load_result(respondent_file, respondent_id=respondent_id)
-    try:
-        append_to_db(database, interview_result)
-    except StorageError as e:
-        print(f"Failed to add interview result due to storage error: {e}")
-        return 1
+    if (ns.file is not None) and (ns.dir is not None):
+        print(f"Cannot run if both of arguments -f and -d at the same time")
+        return Result.BAD_ARGUMENTS
+    
+    if (ns.file is None) and (ns.dir is None):
+        print(f"Cannot run if no arguments specified")
+        return Result.BAD_ARGUMENTS
+
+    if ns.file is not None:
+        srcfile = os.path.abspath(ns.file)
+        srcdir = None
+    
+    if ns.dir is not None:
+        srcfile = None
+        srcdir = os.path.abspath(ns.dir)
+
+    database = os.path.join(os.path.abspath(ns.outdir), "results.sqlite")
+    
+    if srcfile is not None:
+        if not os.path.exists(srcfile):
+            print(f"Respondent file {srcfile} does not exist")
+            return Result.BAD_ARGUMENTS
+        if not os.path.isfile(srcfile):
+            print(f"'{srcfile}' is not a file")
+            return Result.BAD_ARGUMENTS
+    
+    if srcdir is not None:
+        if not os.path.exists(srcdir):
+            print(f"Respondent dir {srcdir} does not exist")
+            return Result.BAD_ARGUMENTS
+        if not os.path.isdir(srcdir):
+            print(f"'{srcdir}' is not a directory")
+            return Result.BAD_ARGUMENTS
+
+    for respondent_file in get_respondents_files(filepath=srcfile, dirpath=srcdir):
+        respondent_id = extract_respondent_id(respondent_file)
+        interview_result = load_result(respondent_file, respondent_id=respondent_id)
+        try:
+            append_to_db(database, interview_result)
+        except StorageError as e:
+            print(f"Failed to add interview result due to storage error: {e}")
+            return Result.GENERIC_ERROR
+    
+    return Result.SUCCESS
+
+
+def get_respondents_files(filepath: str = None, dirpath: str = None) -> List[str]:
+    assert (filepath is not None) or (dirpath is not None)
+    if filepath is not None:
+        return [filepath]
+    return list(
+        map(lambda p: os.path.join(dirpath, p),
+            os.listdir(
+                dirpath
+            )
+        )
+    )
+
+
+def extract_respondent_id(filepath: str) -> str:
+    basename = os.path.basename(filepath)
+    return os.path.splitext(basename)[0]
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main().value)
 else:
     sys.exit(1)
