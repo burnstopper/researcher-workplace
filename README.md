@@ -19,11 +19,11 @@ pip install -r requirements/win-dev.txt
 ### Индивидуальная загрузка результатов из файла
 Загрузить результаты 10 респондента из файла `./gdrive_results/Респондент_010.xlsx` и сохранить в БД sqlite `out/results.sqlite`
 ```
-python -m app -f gdrive_results/Респондент_010.xlsx -d out
+python -m app -f gdrive_results/Респондент_010.xlsx -o out
 ```
 
 ### Пакетная загрузка результатов из папки
 Загрузить результаты всех респондентов из папки gdrive_results и сохранить в БД sqlite `out/results.sqlite`.
 ```
-python -m app -d gdrive_results -d out
+python -m app -d gdrive_results -o out
 ```
