@@ -23,7 +23,7 @@ python -m app -f gdrive_results/Респондент_010.xlsx -o out
 ```
 
 ### Пакетная загрузка результатов из папки
-Загрузить результаты всех респондентов из папки gdrive_results и сохранить в БД sqlite `out/results.sqlite`.
+Загрузить результаты всех респондентов из папки `gdrive_results` и сохранить в БД sqlite `out/results.sqlite`.
 ```
 python -m app -d gdrive_results -o out
 ```
