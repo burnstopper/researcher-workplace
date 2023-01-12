@@ -1,0 +1,3 @@
+
+class GFormLoadingError(Exception):
+    pass

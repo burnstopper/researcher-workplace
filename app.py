@@ -4,7 +4,12 @@ import os
 import sys
 from typing import List
 
-from loader import load_result, append_to_db, StorageError
+from loader import(
+    append_to_db,
+    load_result,
+    load_results_from_gform_results,
+    StorageError
+)
 
 
 class Result(Enum):
@@ -56,14 +61,16 @@ def main():
             print(f"'{srcdir}' is not a directory")
             return Result.BAD_ARGUMENTS
 
-    for respondent_file in get_respondents_files(filepath=srcfile, dirpath=srcdir):
-        respondent_id = extract_respondent_id(respondent_file)
-        interview_result = load_result(respondent_file, key=source_key, respondent_id=respondent_id)
-        try:
-            append_to_db(database, interview_result)
-        except StorageError as e:
-            print(f"Failed to add interview result due to storage error: {e}")
-            return Result.GENERIC_ERROR
+    load_results_from_gform_results(srcfile, None)
+
+    # for respondent_file in get_respondents_files(filepath=srcfile, dirpath=srcdir):
+    #     respondent_id = extract_respondent_id(respondent_file)
+    #     interview_result = load_result(respondent_file, key=source_key, respondent_id=respondent_id)
+    #     try:
+    #         append_to_db(database, interview_result)
+    #     except StorageError as e:
+    #         print(f"Failed to add interview result due to storage error: {e}")
+    #         return Result.GENERIC_ERROR
     
     return Result.SUCCESS
 

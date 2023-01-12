@@ -6,6 +6,7 @@ from loader.sql import(
     APPEND_ROW as SQL_APPEND_ROW
 )
 from loader.xls_loader import load_result
+from loader.gform_loader import load_gform_results
 
 
 class StorageError(Exception):

@@ -14,19 +14,26 @@ class InterviewResult:
     jobs_num: int
     
     # ИХРУ
-    ihru: int
+    distress: int
+    distress_p: float
+    distress_t: str
+    distress_c: int
     
     # Симптомы физического дискомфорта
-    phy_discomfort: int
+    physical_discomfort: int
+    physical_discomform_p: float
     
     # Снижение общего самочувствия и когнитивный дискомфорт
-    cog_discomfort: int
+    cognitive_discomfort: int
+    cognitive_discomfort_p: float
     
     # Нарушения в эмоционально-аффективной сфере
     ea_violation: int
+    ea_violation_p: float
     
     # Снижение мотивации и изменения в сфере социального общения
-    motivation_dec: int
+    motivation_decrease: int
+    motivation_decrease_p: float
     
     # Эмоциональное истощение 
     emotional_exhaustion: int
