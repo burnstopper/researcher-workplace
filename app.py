@@ -6,8 +6,9 @@ from typing import List
 
 from loader import(
     append_to_db,
-    load_result,
-    load_results_from_gform_results,
+    InterviewResult,
+    load_gform_results,
+    load_xls_result,
     StorageError
 )
 
@@ -19,11 +20,14 @@ class Result(Enum):
 
 
 def main():
-    parser = ArgumentParser("python data-loader-xlsx.py", description="Console application for passing data from xlsx book to sqlite database")
+    parser = ArgumentParser("python data-loader-xlsx.py",
+                            description="Console application for passing data from xlsx book to sqlite database")
     parser.add_argument("-f" , "--file")
     parser.add_argument("-d", "--dir")
     parser.add_argument("-o", "--outdir", default="./")
-    parser.add_argument("-k", "--key", help="Key of the source", type=str, dest="key", default=None)
+    parser.add_argument("-k", "--key", help="Key of the source", type=str, dest="key", required=True)
+    parser.add_argument("--gform", help="Parse result as google form", dest="gform", action='store_true')
+    parser.add_argument("--xls", help="Parse result as xls", dest="xls", action='store_true')
     ns = parser.parse_args(sys.argv[1:])
     source_key = ns.key
 
@@ -32,7 +36,7 @@ def main():
         return Result.BAD_ARGUMENTS
     
     if (ns.file is None) and (ns.dir is None):
-        print(f"Cannot run if no arguments specified")
+        print(f"Cannot run if arguments -f and -d are missing")
         return Result.BAD_ARGUMENTS
 
     if ns.file is not None:
@@ -43,8 +47,6 @@ def main():
         srcfile = None
         srcdir = os.path.abspath(ns.dir)
 
-    database = os.path.join(os.path.abspath(ns.outdir), "results.sqlite")
-    
     if srcfile is not None:
         if not os.path.exists(srcfile):
             print(f"Respondent file {srcfile} does not exist")
@@ -61,17 +63,23 @@ def main():
             print(f"'{srcdir}' is not a directory")
             return Result.BAD_ARGUMENTS
 
-    load_results_from_gform_results(srcfile, None)
+    if ns.gform:
+        if srcfile is None:
+            print("srcfile need to specified for loading from gform")
+            return Result.BAD_ARGUMENTS
+        results = load_from_gform(source_key, srcfile)
+    elif ns.xls:
+        results = load_from_xls(source_key, srcfile, srcdir)
+    else:
+        print("Please select type of source table: it is `--xls` or `--gform`")
+        return Result.BAD_ARGUMENTS
 
-    # for respondent_file in get_respondents_files(filepath=srcfile, dirpath=srcdir):
-    #     respondent_id = extract_respondent_id(respondent_file)
-    #     interview_result = load_result(respondent_file, key=source_key, respondent_id=respondent_id)
-    #     try:
-    #         append_to_db(database, interview_result)
-    #     except StorageError as e:
-    #         print(f"Failed to add interview result due to storage error: {e}")
-    #         return Result.GENERIC_ERROR
-    
+    try:
+        dump_to_db(results, ns.outdir)
+    except StorageError as e:
+        print(f"Failed to add interview result due to storage error: {e}")
+        return Result.GENERIC_ERROR
+
     return Result.SUCCESS
 
 
@@ -88,9 +96,28 @@ def get_respondents_files(filepath: str = None, dirpath: str = None) -> List[str
     )
 
 
-def extract_respondent_id(filepath: str) -> str:
-    basename = os.path.basename(filepath)
-    return os.path.splitext(basename)[0]
+def load_from_gform(srckey: str, srcfile: str) -> List[InterviewResult]:
+    return load_gform_results(srcfile, srckey)
+
+
+def load_from_xls(srckey: str, srcfile: str = None, srcdir: str = None) -> List[InterviewResult]:
+    def extract_respondent_id(filepath: str) -> str:
+        basename = os.path.basename(filepath)
+        return os.path.splitext(basename)[0]
+
+    resp_files = get_respondents_files(srcfile, srcdir)
+    loaded_results = []
+    for f in resp_files:
+        resp_id = extract_respondent_id(f)
+        interview_result = load_xls_result(f, key=srckey, respondent_id=resp_id)
+        loaded_results.append(interview_result)
+    return loaded_results
+
+
+def dump_to_db(res: List[InterviewResult], output_dir: str):
+    database_file = os.path.join(os.path.abspath(output_dir), "results.sqlite")
+    for r in res:
+        append_to_db(database_file, r)
 
 
 if __name__ == "__main__":

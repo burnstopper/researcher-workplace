@@ -1,11 +1,16 @@
+from datetime import date as Date
 from typing import List
 
 import pandas as pd
 
-from loader.model import InterviewResult
+from loader.coping_calc_table import load_coping_calc_table
 from loader.errors import GFormLoadingError
+from loader.model import InterviewResult
+from loader.tools import *
+
 
 SHEET_NAME = "Form Responses 1"
+
 
 def load_gform_results(file_path: str, key: str) -> List[InterviewResult]:
     try:
@@ -13,16 +18,14 @@ def load_gform_results(file_path: str, key: str) -> List[InterviewResult]:
     except Exception as e:
         raise GFormLoadingError(f"Loading sheet <{SHEET_NAME}> from file <{file_path}> failed", e)
     calc_distress_results(df)
-    return df
+    calc_burnout_results(df)
+    calc_lazarus_results(df)
+    calc_spb_results(df)
+    return build_interview_results(df, key)
 
 
 def create_respondent_id(key, row_number, age, expirience, timestamp):
     return f"{key}/{row_number}/{age}/{expirience}/{timestamp}"
-
-
-def parse_interview_result(row, key: str):
-    resp_id = create_respondent_id(key, row.name, row['age'], row[5], row[1])
-    r = InterviewResult(resp_id, source=key)
 
 
 def append_column(df: pd.DataFrame, name: str, values: pd.Series):
@@ -32,35 +35,12 @@ def append_column(df: pd.DataFrame, name: str, values: pd.Series):
 #########################
 # Processing distress
 #########################
-MAX_DISTRESS = 72
-MAX_COGNITIVE_DISCOMFORT = 20
-MAX_PHYSICAL_DISCOMFORT = 30
-MAX_EA_VIOLATION = 12
-MAX_DECREASE_MOTIVATION = 10
-
-
 def distress_ans_to_score(x):
     return {
         'Да': 2,
         'Затрудняюсь ответить': 1,
         'Нет': 0
     }[x]
-
-
-def distress_to_text(x):
-    if   x<=17: return "Отсутствие признаков хронического утомления"
-    elif x<=26: return "Начальная степень хронического утомления"
-    elif x<=37: return "Выраженная степень хронического утомления"
-    elif x<=48: return "Сильная степень хронического утомления"
-    else:       return "Переход в область патологических состояний (астенический синдром)"
-
-
-def distress_to_cat(x):
-    if   x<=17: return 0
-    elif x<=26: return 1
-    elif x<=37: return 2
-    elif x<=48: return 3
-    else:       return 4
 
 
 def calc_distress_results(df: pd.DataFrame):
@@ -82,12 +62,10 @@ def calc_distress_results(df: pd.DataFrame):
     motivation_decrease_cols = distress_scores.columns[[5,11,13,27,32,]]
     motivation_decrease = distress_scores[motivation_decrease_cols].apply(sum,1)
 
-    distress_text = distress.apply(distress_to_text)
     distress_cat = distress.apply(distress_to_cat)
     
     append_column(df, "distress", distress)
     append_column(df, "distress_p", distress / MAX_DISTRESS)
-    append_column(df, "distress_t", distress_text)
     append_column(df, "distress_c", distress_cat)
     append_column(df, "physical_discomfort", physical_discomfort)
     append_column(df, "physical_discomfort_p", physical_discomfort / MAX_PHYSICAL_DISCOMFORT)
@@ -102,11 +80,6 @@ def calc_distress_results(df: pd.DataFrame):
 #######################
 # Processing burnout
 #######################
-MAX_EMOTIONAL_EXHAUSTION = 54
-MAX_DEPERSONALIZATION = 30
-MAX_REDUCTION_OF_PROFESSIONALISM = 48
-
-
 def burnout_to_score(x):
     return {
         'Никогда':0,
@@ -117,43 +90,6 @@ def burnout_to_score(x):
         'Очень часто':5,
         'Ежедневно':6
     }[x]
-
-
-def emotional_exhaustion_to_text(x):
-    if x<=15:     return "Низкий уровень"
-    elif x<= 24:  return "Средний уровень"
-    else:         return "Высокий уровень"
-
-
-def emotional_exhaustion_to_cat(x):
-    if x<=15:     return 0
-    elif x<= 24:  return 1
-    else:         return 2
-
-
-def depersonalization_to_text(x):
-    if x<=5:      return "Низкий уровень"
-    elif x<= 10:  return "Средний уровень"
-    else:         return "Высокий уровень"
-
-
-def depersonalization_to_cat(x):
-    if x<=5:      return 0
-    elif x<= 10:  return 1
-    else:         return 2
-    
-
-def reduction_of_professionalism_to_text(x):
-    if x>=37:     return "Низкий уровень"
-    elif x>30:    return "Средний уровень"
-    else:         return "Высокий уровень"
-
-
-def reduction_of_professionalism_to_cat(x):
-    if x>=37:     return 0
-    elif x>30:    return 1
-    else:         return 2
-
 
 def calc_burnout_results(df: pd.DataFrame):
     burnout_df = df[df.columns[list(range(41, 63))]]
@@ -170,13 +106,10 @@ def calc_burnout_results(df: pd.DataFrame):
     reduction_of_professionalism_cols = burnout_score.columns[[3,6,8,11,16,17,18,20,]]
     reduction_of_professionalism = burnout_score[reduction_of_professionalism_cols].apply(sum,1)
 
-    emotional_exhaustion_text = emotional_exhaustion.apply(emotional_exhaustion_to_text)
     emotional_exhaustion_cat = emotional_exhaustion.apply(emotional_exhaustion_to_cat)
 
-    depersonalization_text = depersonalization.apply(depersonalization_to_text)
     depersonalization_cat = depersonalization.apply(depersonalization_to_cat)
     
-    reduction_of_professionalism_text = reduction_of_professionalism.apply(reduction_of_professionalism_to_text)
     reduction_of_professionalism_cat = reduction_of_professionalism.apply(reduction_of_professionalism_to_cat)
 
     burnout_p = \
@@ -186,18 +119,25 @@ def calc_burnout_results(df: pd.DataFrame):
         + (1 - reduction_of_professionalism / MAX_REDUCTION_OF_PROFESSIONALISM) ** 2 \
     ) / 3) ** 0.5
 
+    burnout_index = \
+        emotional_exhaustion \
+        + depersonalization \
+        + MAX_REDUCTION_OF_PROFESSIONALISM \
+        - reduction_of_professionalism
+
+    burnout_index_p = burnout_index / (MAX_EMOTIONAL_EXHAUSTION + MAX_DEPERSONALIZATION + MAX_REDUCTION_OF_PROFESSIONALISM)
+
     append_column(df, "burnout_p", burnout_p)
+    append_column(df, "burnout_index", burnout_index)
+    append_column(df, "burnout_index_p", burnout_index_p)
     append_column(df, "emotional_exhaustion", emotional_exhaustion)
     append_column(df, "emotional_exhaustion_p", emotional_exhaustion / MAX_EMOTIONAL_EXHAUSTION)
-    append_column(df, "emotional_exhaustion_t", emotional_exhaustion_text)
-    append_column(df, "emotional_exhasution_c", emotional_exhaustion_cat)
+    append_column(df, "emotional_exhaustion_c", emotional_exhaustion_cat)
     append_column(df, "depersonalization", depersonalization)
     append_column(df, "depersonalization_p", depersonalization / MAX_DEPERSONALIZATION)
-    append_column(df, "depersonalization_t", depersonalization_text)
     append_column(df, "depersonalization_c", depersonalization_cat)
     append_column(df, "reduction_of_professionalism", reduction_of_professionalism)
     append_column(df, "reduction_of_professionalism_p", reduction_of_professionalism / MAX_REDUCTION_OF_PROFESSIONALISM)
-    append_column(df, "reduction_of_professionalism_t", reduction_of_professionalism_text)
     append_column(df, "reduction_of_professionalism_c", reduction_of_professionalism_cat)
 
 
@@ -213,61 +153,123 @@ def coping_to_score(x):
     }[x]
 
 
-def lazarus_to_cat(x):
-    if x<40:      return 0
-    elif x<=60:   return 1
-    else:         return 2
-
-
-def lazarus_to_text(x):
-    return {
-        0: "Редкое использование стратегии",
-        1: "Умеренное использование стратегии",
-        2: "Выраженное предпочтение стратегии",
-    }[lazarus_to_cat(x)]
-
-
 def calc_lazarus_results(df: pd.DataFrame):
     coping_df = df[df.columns[63:113]]
     coping_score = coping_df.applymap(coping_to_score)
-    sexage = df[[1, 2]]
-
+    sex_age = df[[df.columns[1], df.columns[2]]]
+    sex_age.columns = ["sex", "age"]
+    
     lazarus_list = [
-        ['Конфронтация',                     [1,2,12,20,25,36],          'Confrontation'],
-        ['Дистанцирование',                  [7,8,10,15,31,34],          'Distancing'],
-        ['Самоконтроль',                     [5,9,26,33,43,48,49],       'Self-control'],
-        ['Поиск социальной поддержки',       [3,13,16,23,32,35],         'Seeking social support'],
-        ['Принятие ответственности',         [4,18,21,41],               'Taking responsibility'],
-        ['Бегство-избегание',                [6,11,24,30,37,40,45,46],   'Escape-avoidance'],
-        ['Планирование решения проблемы',    [0,19,29,38,39,42],         'Problem solving planning'],
-        ['Положительная переоценка',         [14,17,22,27,28,44,47],     'Positive reassessment'],
+        ['Конфронтация',                     [1,2,12,20,25,36],          'confrontation'],
+        ['Дистанцирование',                  [7,8,10,15,31,34],          'distancing'],
+        ['Самоконтроль',                     [5,9,26,33,43,48,49],       'selfcontrol'],
+        ['Поиск социальной поддержки',       [3,13,16,23,32,35],         'seeking_social_support'],
+        ['Принятие ответственности',         [4,18,21,41],               'taking_responsibility'],
+        ['Бегство-избегание',                [6,11,24,30,37,40,45,46],   'escaping'],
+        ['Планирование решения проблемы',    [0,19,29,38,39,42],         'problem_solving_planning'],
+        ['Положительная переоценка',         [14,17,22,27,28,44,47],     'positive_revaluation'],
     ]
-    lazarus_t = []
-    lazarus_k = []
-    lazarus_v = []
+    t_scores = []
 
-    for indicator,questions,_ in lazarus_list:
-        ind_cols = coping_score.columns[questions]
-        ind_mark = coping_score[ind_cols].apply(sum,1)
-        ind_mark.name = 'mark'
-        ind_data = pd.concat([sexage,ind_mark],axis=1)
-        ind_data['indicator'] = indicator
-        ind_data2 = pd.merge(
-            ind_data,
-            t_data,
+    for indicator, questions, _ in lazarus_list:
+        indicator_cols = coping_score.columns[questions]
+        indicator_score = coping_score[indicator_cols].apply(sum, 1)
+        indicator_score.name = 'score'
+
+        indicator_data = pd.concat([sex_age, indicator_score], axis=1)
+        indicator_data['indicator'] = indicator
+        
+        indicator_data['sex'] = indicator_data['sex'].str.lower()
+        
+        indicator_data.loc[indicator_data['age'] == 'до 20 лет', ['age']] = 'До 20 лет'
+        indicator_data.loc[indicator_data['age'] == '31-45 лет', ['age']] = 'от 31 до 45 лет'
+        indicator_data.loc[indicator_data['age'] == '21-30 лет', ['age']] = 'от 21 до 30 лет'
+        indicator_data.loc[indicator_data['age'] == '46-60 лет', ['age']] = 'от 46 до 60 лет'
+
+        indicator_data.reset_index(drop=True, inplace=True)
+        indicator_result = pd.merge(
+            indicator_data,
+            load_coping_calc_table(),
             how = 'left',
-            left_on = ['sex', 'age', 'mark', 'indicator'],
-            right_on = ['пол', 'возраст', 'сырой балл', 'шкала']
-            )
-        ind_t = ind_data2['Т-балл']
-        ind_text = ind_t.apply(lazarus_to_text)
-        ind_cat = ind_t.apply(lazarus_to_cat)
-        lazarus_t.append(ind_t)
-        lazarus_k.append(ind_text)
-        lazarus_v.append(ind_cat)
+            on=['sex', 'age', 'score', 'indicator']
+        )
+        t_scores.append(indicator_result['t_score'])
 
-    for laz_t, laz_k, laz_v, laz_list in zip(lazarus_t, lazarus_k, lazarus_v, lazarus_list):
-        ind_name = laz_list[-1]
-        append_column(df, ind_name, laz_t)
-        append_column(df, ind_name + "_t", laz_k)
-        append_column(df, ind_name + "_c", laz_v)
+    for t_score, (_, _, indicator_name) in zip(t_scores, lazarus_list):
+        append_column(df, indicator_name, t_score)
+        # indicator_text_value = t_score.apply(lazarus_to_text)
+        indicator_cat_value = t_score.apply(lazarus_to_cat)
+        # append_column(df, indicator_name + "_t", indicator_text_value)
+        append_column(df, indicator_name + "_c", indicator_cat_value)
+
+
+##########################
+# Processing SPB
+##########################
+
+def spb_to_score(x):
+    return {
+        "Полностью согласен":       1,
+        "В основном согласен":      2,
+        "Слегка согласен":          3,
+        "Слегка не согласен":       4,
+        "В основном не согласен":   5,
+        "Полностью не согласен":    6,
+    }[x]
+
+
+def calc_spb_results(df: pd.DataFrame):
+    spb_df = df[df.columns[113:163]]
+
+    spb_score = spb_df.applymap(spb_to_score)
+    spb_neg_cols = spb_score.columns[[0,3,12,16,19,21,24,25,27,33,37,41,45,48]]
+    spb_score[spb_neg_cols] = 7-spb_score[spb_neg_cols]
+
+    catastrophization_cols = spb_score.columns[[0,5,10,15,20,25,30,35,40,45]]
+    catastrophization = spb_score[catastrophization_cols].apply(sum,1)
+
+    duty_to_oneself_cols = spb_score.columns[[1,6,11,16,21,26,31,36,41,46]]
+    duty_to_oneself = spb_score[duty_to_oneself_cols].apply(sum,1)
+
+    due_in_relation_to_others_cols = spb_score.columns[[2,7,12,17,22,27,32,37,42,47]]
+    due_in_relation_to_others = spb_score[due_in_relation_to_others_cols].apply(sum,1)
+
+    low_frustration_tolerance_cols = spb_score.columns[[3,8,13,18,23,28,33,38,43,48]]
+    low_frustration_tolerance = spb_score[low_frustration_tolerance_cols].apply(sum,1)
+
+    selfestimation_cols = spb_score.columns[[4,9,14,19,24,29,34,39,44,49]]
+    selfestimation = spb_score[selfestimation_cols].apply(sum,1)
+
+    for spb_val,spb_vname in [
+        (catastrophization,'catastrophization'),
+        (duty_to_oneself,'due_to_self'),
+        (due_in_relation_to_others,'due_to_others'),
+        (low_frustration_tolerance,'low_frustration_tolerance'),
+        (selfestimation,'selfestimation'),
+    ]:
+        append_column(df, spb_vname, spb_val)
+        append_column(df, f'{spb_vname}_c', spb_val.apply(spb_to_cat))
+
+
+def build_interview_results(df: pd.DataFrame, key: str) -> InterviewResult:
+    df['date'] = df['Timestamp'].apply(timestamp_to_date)
+    df['timestamp'] = df['Timestamp'].apply(lambda x: int(x.timestamp() * 1000))
+    df['gender'] = df['Пол'].apply(recode_gender)
+    df['position'] = df['Специальность ']
+    df['age'] = df['Возраст (полных лет)']
+    df['age_c'] = df['age'].apply(encode_age_cat)
+    df['experience'] = df['Сколько лет вы учитесь/работаете в ИТ?']
+    df['jobs_num'] = 0
+    results = []
+    for index, row in df.iterrows():
+        timestamp = row.loc['timestamp']
+        sex = row.loc['gender']
+        age  = row.loc['age']
+        expirience = row.loc['experience']
+        respondent_id = create_respondent_id(key, index, age, expirience, timestamp)
+        ir = InterviewResult(respondent_id, key)
+        ir.gender = sex
+        for col in df.columns:
+            setattr(ir, col, row[col])
+        results.append(ir)
+    return results
