@@ -26,7 +26,7 @@
             "console": "externalTerminal",
             "justMyCode": true,
             "args": [
-                "-f", "${workspaceFolder}/tests/xls/sample.xlsx",
+                "-f", "${workspaceFolder}/tests/xls/Респондент 020.xlsx",
                 "-o", "${workspaceFolder}/local",
                 "-k", "xls-loading",
                 "--xls"
