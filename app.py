@@ -1,16 +1,18 @@
 from argparse import ArgumentParser
 from enum import Enum
 import os
+from pathlib import Path
 import sys
-from typing import List
+from typing import List, Optional
+
 
 from loader import(
     append_to_db,
-    InterviewResult,
     load_gform_results,
     load_xls_result,
     StorageError
 )
+from loader.storage import LocalStorage, ResultsTestRecord
 
 
 class Result(Enum):
@@ -19,16 +21,16 @@ class Result(Enum):
     GENERIC_ERROR         = 2
 
 
-def main():
+def main(args: List[str]):
     parser = ArgumentParser("python data-loader-xlsx.py",
                             description="Console application for passing data from xlsx book to sqlite database")
     parser.add_argument("-f" , "--file")
     parser.add_argument("-d", "--dir")
-    parser.add_argument("-o", "--outdir", default="./")
+    parser.add_argument("-o", "--outfile", default="db.sqlite")
     parser.add_argument("-k", "--key", help="Key of the source", type=str, dest="key", required=True)
     parser.add_argument("--gform", help="Parse result as google form", dest="gform", action='store_true')
     parser.add_argument("--xls", help="Parse result as xls", dest="xls", action='store_true')
-    ns = parser.parse_args(sys.argv[1:])
+    ns = parser.parse_args(args[1:])
     source_key = ns.key
 
     if (ns.file is not None) and (ns.dir is not None):
@@ -75,7 +77,9 @@ def main():
         return Result.BAD_ARGUMENTS
 
     try:
-        dump_to_db(results, ns.outdir)
+        storage = LocalStorage(Path(ns.outfile))
+        storage.setup()
+        dump_to_db(results, storage)
     except StorageError as e:
         print(f"Failed to add interview result due to storage error: {e}")
         return Result.GENERIC_ERROR
@@ -83,24 +87,20 @@ def main():
     return Result.SUCCESS
 
 
-def get_respondents_files(filepath: str = None, dirpath: str = None) -> List[str]:
+def get_respondents_files(filepath: Optional[str] = None, dirpath: Optional[str] = None) -> List[str]:
     assert (filepath is not None) or (dirpath is not None)
     if filepath is not None:
         return [filepath]
-    return list(
-        map(lambda p: os.path.join(dirpath, p),
-            os.listdir(
-                dirpath
-            )
-        )
-    )
+    return [
+        os.path.join(dirpath, p) for p in os.listdir(dirpath)
+    ]
 
 
-def load_from_gform(srckey: str, srcfile: str) -> List[InterviewResult]:
+def load_from_gform(srckey: str, srcfile: str) -> List[ResultsTestRecord]:
     return load_gform_results(srcfile, srckey)
 
 
-def load_from_xls(srckey: str, srcfile: str = None, srcdir: str = None) -> List[InterviewResult]:
+def load_from_xls(srckey: str, srcfile: Optional[str] = None, srcdir: Optional[str] = None) -> List[ResultsTestRecord]:
     def extract_respondent_id(filepath: str) -> str:
         basename = os.path.basename(filepath)
         return os.path.splitext(basename)[0]
@@ -114,13 +114,10 @@ def load_from_xls(srckey: str, srcfile: str = None, srcdir: str = None) -> List[
     return loaded_results
 
 
-def dump_to_db(res: List[InterviewResult], output_dir: str):
-    database_file = os.path.join(os.path.abspath(output_dir), "results.sqlite")
+def dump_to_db(res: List[ResultsTestRecord], storage: LocalStorage):
     for r in res:
-        append_to_db(database_file, r)
+        append_to_db(storage, r)
 
 
 if __name__ == "__main__":
-    sys.exit(main().value)
-else:
-    sys.exit(1)
+    sys.exit(main(sys.argv).value)

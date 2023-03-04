@@ -1,13 +1,17 @@
+import datetime
+
 from openpyxl.reader.excel import load_workbook
 from openpyxl.workbook.workbook import Workbook
 
-from loader.model import InterviewResult
+from loader.storage import ResultsTestRecord
 from loader.tools import *
 
 
-def load_xls_result(file_path: str, key: str, respondent_id: str) -> InterviewResult:
+def load_xls_result(file_path: str, key: str, respondent_id: str) -> ResultsTestRecord:
     book = load_workbook(file_path, read_only=True, data_only=True)
-    result = InterviewResult(respondent_id, key)
+    result = ResultsTestRecord()
+    result.respondent_id = respondent_id
+    result.key_source = key
     parse_questionary(book, result)
     parse_chronic_fatigue(book, result)
     parse_professional_burnout(book, result)
@@ -16,20 +20,20 @@ def load_xls_result(file_path: str, key: str, respondent_id: str) -> InterviewRe
     return result
 
 
-def parse_questionary(wb: Workbook, result: InterviewResult):
+def parse_questionary(wb: Workbook, result: ResultsTestRecord):
     sheet = wb["Анкета"]
     col = (ord('B') - ord('A')) + 1  # 1-numeration is used
-    result.date = sheet.cell(row=6, column=col).value.date()
+    filling_time: datetime.datetime = sheet.cell(row=6, column=col).value
     result.gender = recode_gender(sheet.cell(row=7, column=col).value)
     result.age = sheet.cell(row=8, column=col).value
     result.age_c = encode_age_cat(result.age)
     result.position = sheet.cell(row=9, column=col).value
     result.experience = int(sheet.cell(row=11, column=col).value)
     result.jobs_num = int(sheet.cell(row=12, column=col).value)
-    result.timestamp = int(1000 * Timestamp(result.date).timestamp())
+    result.date_time = filling_time - datetime.timedelta(filling_time.microsecond)
 
 
-def parse_chronic_fatigue(wb: Workbook, result: InterviewResult):
+def parse_chronic_fatigue(wb: Workbook, result: ResultsTestRecord):
     sheet = wb["Хроническое утомление"]
     col = (ord('D') - ord('A')) + 1  # 1-numeration is used
     col_p = col + 1
@@ -46,7 +50,7 @@ def parse_chronic_fatigue(wb: Workbook, result: InterviewResult):
     result.motivation_decrease_p = float(sheet.cell(row=45, column=col_p).value)
 
 
-def parse_professional_burnout(wb: Workbook, result: InterviewResult):
+def parse_professional_burnout(wb: Workbook, result: ResultsTestRecord):
     sheet = wb["Профессиональное выгорание"]
     col = (ord('C') - ord('A')) + 1  # 1-numeration is used
     col_p = col + 2
@@ -68,7 +72,7 @@ def parse_professional_burnout(wb: Workbook, result: InterviewResult):
     result.burnout_index_p = result.burnout_index / (MAX_EMOTIONAL_EXHAUSTION + MAX_DEPERSONALIZATION + MAX_REDUCTION_OF_PROFESSIONALISM)
 
 
-def parse_coping_strategy(wb: Workbook, result: InterviewResult):
+def parse_coping_strategy(wb: Workbook, result: ResultsTestRecord):
     sheet = wb["Способы совладающего поведения"]
     col = (ord('D') - ord('A')) + 1  # 1-numeration
     result.confrontation = sheet.cell(row=56, column=col).value
@@ -89,7 +93,7 @@ def parse_coping_strategy(wb: Workbook, result: InterviewResult):
     result.positive_revaluation_c = lazarus_to_cat(result.positive_revaluation)
 
 
-def parse_irrational_setups(wb: Workbook, result: InterviewResult):
+def parse_irrational_setups(wb: Workbook, result: ResultsTestRecord):
     sheet = wb["Диагностика иррациональных уста"]
     col = (ord('C') - ord('A')) + 1  # 1-numeration
     result.catastrophization = sheet.cell(row=54, column=col).value

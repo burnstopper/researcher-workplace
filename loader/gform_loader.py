@@ -1,18 +1,18 @@
-from datetime import date as Date
+import datetime as dt
 from typing import List
 
 import pandas as pd
 
 from loader.coping_calc_table import load_coping_calc_table
 from loader.errors import GFormLoadingError
-from loader.model import InterviewResult
+from loader.storage import ResultsTestRecord
 from loader.tools import *
 
 
 SHEET_NAME = "Form Responses 1"
 
 
-def load_gform_results(file_path: str, key: str) -> List[InterviewResult]:
+def load_gform_results(file_path: str, key: str) -> List[ResultsTestRecord]:
     try:
         df = pd.read_excel(file_path, sheet_name=SHEET_NAME)
     except Exception as e:
@@ -21,7 +21,7 @@ def load_gform_results(file_path: str, key: str) -> List[InterviewResult]:
     calc_burnout_results(df)
     calc_lazarus_results(df)
     calc_spb_results(df)
-    return build_interview_results(df, key)
+    return build_results(df, key)
 
 
 def create_respondent_id(key, row_number, age, expirience, timestamp):
@@ -90,6 +90,7 @@ def burnout_to_score(x):
         'Очень часто':5,
         'Ежедневно':6
     }[x]
+
 
 def calc_burnout_results(df: pd.DataFrame):
     burnout_df = df[df.columns[list(range(41, 63))]]
@@ -206,7 +207,6 @@ def calc_lazarus_results(df: pd.DataFrame):
 ##########################
 # Processing SPB
 ##########################
-
 def spb_to_score(x):
     return {
         "Полностью согласен":       1,
@@ -251,25 +251,26 @@ def calc_spb_results(df: pd.DataFrame):
         append_column(df, f'{spb_vname}_c', spb_val.apply(spb_to_cat))
 
 
-def build_interview_results(df: pd.DataFrame, key: str) -> InterviewResult:
-    df['date'] = df['Timestamp'].apply(timestamp_to_date)
-    df['timestamp'] = df['Timestamp'].apply(lambda x: int(x.timestamp() * 1000))
+def build_results(df: pd.DataFrame, key: str) -> List[ResultsTestRecord]:
+    df['date_time'] = df['Timestamp'].apply(lambda x: x - dt.timedelta(microseconds=x.microsecond))
     df['gender'] = df['Пол'].apply(recode_gender)
     df['position'] = df['Специальность ']
     df['age'] = df['Возраст (полных лет)']
     df['age_c'] = df['age'].apply(encode_age_cat)
     df['experience'] = df['Сколько лет вы учитесь/работаете в ИТ?'].apply(expirience_to_int)
-    df['jobs_num'] = 0
     results = []
     for index, row in df.iterrows():
-        timestamp = row.loc['timestamp']
+        timestamp = int(row.loc['date_time'].timestamp())
         sex = row.loc['gender']
         age  = row.loc['age']
         expirience = row.loc['experience']
         respondent_id = create_respondent_id(key, index, age, expirience, timestamp)
-        ir = InterviewResult(respondent_id, key)
-        ir.gender = sex
+        record = ResultsTestRecord()
+        record.respondent_id = respondent_id
+        record.key_source = key
+        record.gender = sex
         for col in df.columns:
-            setattr(ir, col, row[col])
-        results.append(ir)
+            setattr(record, col, row[col])
+        record.jobs_num = 0
+        results.append(record)
     return results
