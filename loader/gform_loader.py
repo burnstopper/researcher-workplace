@@ -258,7 +258,7 @@ def build_interview_results(df: pd.DataFrame, key: str) -> InterviewResult:
     df['position'] = df['Специальность ']
     df['age'] = df['Возраст (полных лет)']
     df['age_c'] = df['age'].apply(encode_age_cat)
-    df['experience'] = df['Сколько лет вы учитесь/работаете в ИТ?']
+    df['experience'] = df['Сколько лет вы учитесь/работаете в ИТ?'].apply(expirience_to_int)
     df['jobs_num'] = 0
     results = []
     for index, row in df.iterrows():

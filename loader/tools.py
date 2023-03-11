@@ -73,3 +73,9 @@ def lazarus_to_cat(x):
     if x<40:      return 0
     elif x<=60:   return 1
     else:         return 2
+
+def expirience_to_int(x) -> int:
+    try:
+        return int(x)
+    except ValueError:
+        return 0
