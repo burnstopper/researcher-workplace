@@ -38,8 +38,8 @@ class ResultsTestRecord(TestResult):
     ea_violation: Mapped[int]
     ea_violation_p: Mapped[float]
 
-    motivation_decrease: Mapped[float]
-    motivation_decrease_p: Mapped[int]
+    motivation_decrease: Mapped[int]
+    motivation_decrease_p: Mapped[float]
 
    # Burnout
     emotional_exhaustion: Mapped[int]
@@ -103,4 +103,4 @@ class ResultsTestRecord(TestResult):
 
 
     def __repr__(self) -> str:
-        return f"Results(test_id={self.test_id})"
+        return f"Results(resp={self.respondent_id}, date_time={self.date_time})"
