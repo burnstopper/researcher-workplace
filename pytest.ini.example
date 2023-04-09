@@ -1,0 +1,4 @@
+[pytest]
+pythonpath=path to researcher-workplace installation
+log_cli=True
+

@@ -10,3 +10,12 @@ venv
 # All local files
 local/
 
+# Temporary test files
+tests/tmp
+
+# Local pytest configuration
+pytest.ini
+
+# Local VSCode config
+.vscode
+
