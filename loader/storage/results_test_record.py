@@ -2,9 +2,11 @@ import datetime
 
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import mapped_column, Session
+from sqlalchemy import select
 
 from loader.storage import TestResult
+from loader.storage.local_storage import LocalStorage
 
 
 class ResultsTestRecord(TestResult):
@@ -104,3 +106,15 @@ class ResultsTestRecord(TestResult):
 
     def __repr__(self) -> str:
         return f"Results(resp={self.respondent_id}, date_time={self.date_time})"
+
+
+    @staticmethod
+    def get_last_record_date_time(storage: LocalStorage) -> datetime.datetime:
+        date_time = datetime.datetime(2022, 1, 1)
+        with Session(storage.engine) as session:
+            stmt = select(ResultsTestRecord.date_time).order_by(ResultsTestRecord.date_time.desc())
+            result = session.execute(stmt)
+            row = result.fetchone()
+            if row is not None:
+                date_time = row.tuple()[0]
+        return date_time

@@ -5,13 +5,12 @@ from typing import Any, Dict
 
 from loader.errors import StorageError
 from loader.gform_loader import load_gform_results
+from loader.json_to_table_mapper import JsonToTableMapper
 from loader.service_loader import TestService
 from loader.storage import *
-from loader.test_results_download_controller import TestResultsDownloadController
-from loader.test_result_saver import TestResultSaver
-from loader.json_to_table_mapper import JsonToTableMapper
-from loader.xls_loader import load_xls_result
 from loader.test_implementation_holder import TestImplementationFactory, TestImplementationHolder
+from loader.test_result_saver import TestResultSaver
+from loader.xls_loader import load_xls_result
 
 
 def append_to_db(storage: LocalStorage, result: ResultsTestRecord):
@@ -30,14 +29,12 @@ class LoadingResultsStatistics:
     number_of_downloaded_test_results: int
     number_of_new_test_results: int
     number_of_ignored_test_results: int
-    number_of_replaced_test_results: int
 
 
     def __init__(self):
         self.number_of_downloaded_test_results = 0
         self.number_of_new_test_results = 0
         self.number_of_ignored_test_results = 0
-        self.number_of_replaced_test_results = 0
 
 
 class Loader:
@@ -69,19 +66,25 @@ class Loader:
             stats.number_of_downloaded_test_results += len(test_results)
             stats.number_of_ignored_test_results += num_downloaded - num_saved
             stats.number_of_new_test_results += num_saved
-            stats.number_of_replaced_test_results = 0
         return stats
     
 
-    def reload_results(self, since: datetime.datetime):
-        """The function tries to load results from all microservices.
-        
-        Results already existing in local storage are replaced with new results from microservices.
+    def reload_results(self, since: datetime.datetime) -> LoadingResultsStatistics:
+        """The function deletes all results with date_time < since and tries to load new results from all microservices.
         
         Arguments:
         since - the instance of datetime.datetime which represents the point in the past from wich results are reloaded.
         """
-        pass
+        TestResultsDeleter(since, self.storage).run()
+        return self.load_recent_results(datetime.datetime.now(since.tzinfo) - since)
+
+
+    def merge_results(self) -> None:
+        """The function tries to move all data independent tables individual for every microservice to a common results
+        table.
+        """
+        date_time = ResultsTestRecord.get_last_record_date_time(self.storage)
+        TestResultsMerge(date_time, self.storage).run()
 
 
     @property

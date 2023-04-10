@@ -7,11 +7,13 @@ class TestResult(DeclarativeBase):
 
 
 from loader.storage.burnout_test_record import BurnoutTestRecord
-from loader.storage.distress_test_record import DistressTestRecord
 from loader.storage.coping_test_record import CopingTestRecord
-from loader.storage.spb_test_record import SpbTestRecord
-from loader.storage.results_test_record import ResultsTestRecord
+from loader.storage.distress_test_record import DistressTestRecord
 from loader.storage.local_storage import LocalStorage
+from loader.storage.results_test_record import ResultsTestRecord
+from loader.storage.spb_test_record import SpbTestRecord
+from loader.storage.test_results_deleter import TestResultsDeleter
+from loader.storage.test_results_merge import TestResultsMerge
 
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "LocalStorage",
     "TestResult",
     "ResultsTestRecord",
+    "TestResultsDeleter",
+    "TestResultsMerge",
 ]
