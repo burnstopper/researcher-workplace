@@ -7,6 +7,9 @@ from loader.service_loader.errors import ServiceError
 
 
 class TestResultsDownloadController:
+    __test__ = False
+
+
     def __init__(self, service: TestService):
         self._service = service
         self._logger = logging.getLogger(f"loader.{self.__class__.__name__}")
