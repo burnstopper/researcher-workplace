@@ -36,6 +36,11 @@ class LoadingResultsStatistics:
         self.number_of_new_test_results = 0
         self.number_of_ignored_test_results = 0
 
+    def __str__(self):
+        return f"LoadingStats(downloaded={self.number_of_downloaded_test_results}," \
+                             f" new={self.number_of_new_test_results}," \
+                             f" ignored={self.number_of_ignored_test_results})"
+
 
 class Loader:
     @staticmethod
@@ -48,7 +53,7 @@ class Loader:
 
     def load_recent_results(self, period: datetime.timedelta = datetime.timedelta(days=1)) -> LoadingResultsStatistics:
         """The function tries to load results from all mciroservices.
-        
+
         Results already existing in local storage are ignored.
 
         Arguments:
@@ -67,11 +72,11 @@ class Loader:
             stats.number_of_ignored_test_results += num_downloaded - num_saved
             stats.number_of_new_test_results += num_saved
         return stats
-    
+
 
     def reload_results(self, since: datetime.datetime) -> LoadingResultsStatistics:
         """The function deletes all results with date_time < since and tries to load new results from all microservices.
-        
+
         Arguments:
         since - the instance of datetime.datetime which represents the point in the past from wich results are reloaded.
         """

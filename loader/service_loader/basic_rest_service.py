@@ -38,7 +38,7 @@ class BasicRestService:
                                     timeout=10)
         except IOError as e:
             self._logger.error(f"Request failed due to IOError: {e}")
-            return {}
+            raise e
         if response.status_code in (STATUS_CODE_UNAUTHORIZED, STATUS_CODE_FORBIDDEN):
             self._logger.error(f"Auth token provided for service on addr {self._host}:{self._port} is not valid")
             raise ServiceError(response.status_code)
@@ -47,8 +47,7 @@ class BasicRestService:
                                f"failed with http status code: {response.status_code}")
             raise ServiceError(response.status_code)
         try:
-            res = response.json()
+            return response.json()
         except Exception as e:
-            self._logger.error(f"Failed to parse response: {e}")
-            res = {}
-        return res
+            self._logger.error(f"Failed to parse response on request {response.request.url}: {e}")
+            raise e

@@ -32,7 +32,7 @@ class TestResultsDownloadController:
     _today: datetime.datetime
     _results: List[dict]
     _tests_info: List[TestInfo]
-    
+
 
     def _download_tests_info(self) -> None:
         current_date = self._starting_date
@@ -42,12 +42,15 @@ class TestResultsDownloadController:
                 tests_info = self._service.get_recent_results(current_date)
                 self._logger.debug(f"There are {len(tests_info)} tests in {current_date.date()}")
                 self._tests_info.extend(tests_info)
-            except ServiceError as e:
+            except Exception as e:
                 self._logger.error(f"Failed to get list of tests at {current_date.date()}: {e}")
             current_date = current_date + one_day_delta
 
 
     def _download_every_test_result(self) -> None:
         for test_info in self._tests_info:
-            result = self._service.get_result_by_id(test_info.test_id)
-            self._results.append(result)
+            try:
+                result = self._service.get_result_by_id(test_info.test_id)
+                self._results.append(result)
+            except Exception as e:
+                self._logger.warning(f"Failed to get test result for test_id={test_info.test_id}: {e}")

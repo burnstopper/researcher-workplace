@@ -12,18 +12,18 @@ class AdoptedDistressTestService(TestService, BasicRestService):
 
 
     def get_recent_results(self, from_: datetime.datetime) -> List[TestInfo]:
-        url = '/api/ihru/results'
+        url = 'api/ihru/results'
         timestamp = int(from_.astimezone(TestService.TIMEZONE).timestamp())
         url_params = {'timestamp': timestamp}
         response = self.make_request(url, url_params)
         if isinstance(response, list):
             return self._parse_recent_results_response(response)
         else:
-            return []
+            raise ValueError(f"Expected response of type dict, but have: {type(response)}")
 
 
     def get_result_by_id(self, test_id: int) -> Dict:
-        url = '/api/ihru'
+        url = 'api/ihru'
         url_params = {'test_id': test_id}
         response = self.make_request(url, url_params)
         if isinstance(response, Dict):
@@ -31,7 +31,7 @@ class AdoptedDistressTestService(TestService, BasicRestService):
             AdoptedDistressTestService._do_consistency_renaming_of_test_results_field(response)
             return response
         else:
-            return {}
+            raise ValueError(f"Expected response of type dict, but have: {type(response)}")
 
 
     def _parse_recent_results_response(self, response: List[dict]):
@@ -45,8 +45,8 @@ class AdoptedDistressTestService(TestService, BasicRestService):
         json["date_time"] = json['datetime']
         json['result_id'] = json['test_id']
         return TestInfo.from_json(json)
-    
-    
+
+
     @staticmethod
     def _do_consistency_renaming_of_test_results_field(response: Dict[str, Any]) -> None:
         response["ea_violation"] = response["emotional_violation"]
