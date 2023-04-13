@@ -36,7 +36,7 @@ def main(args: List[str]):
     if (ns.file is not None) and (ns.dir is not None):
         print(f"Cannot run if both of arguments -f and -d at the same time")
         return Result.BAD_ARGUMENTS
-    
+
     if (ns.file is None) and (ns.dir is None):
         print(f"Cannot run if arguments -f and -d are missing")
         return Result.BAD_ARGUMENTS
@@ -44,7 +44,7 @@ def main(args: List[str]):
     if ns.file is not None:
         srcfile = os.path.abspath(ns.file)
         srcdir = None
-    
+
     if ns.dir is not None:
         srcfile = None
         srcdir = os.path.abspath(ns.dir)
@@ -56,7 +56,7 @@ def main(args: List[str]):
         if not os.path.isfile(srcfile):
             print(f"'{srcfile}' is not a file")
             return Result.BAD_ARGUMENTS
-    
+
     if srcdir is not None:
         if not os.path.exists(srcdir):
             print(f"Respondent dir {srcdir} does not exist")
@@ -65,16 +65,20 @@ def main(args: List[str]):
             print(f"'{srcdir}' is not a directory")
             return Result.BAD_ARGUMENTS
 
-    if ns.gform:
-        if srcfile is None:
-            print("srcfile need to specified for loading from gform")
+    try:
+        if ns.gform:
+            if srcfile is None:
+                print("srcfile need to specified for loading from gform")
+                return Result.BAD_ARGUMENTS
+            results = load_from_gform(source_key, srcfile)
+        elif ns.xls:
+            results = load_from_xls(source_key, srcfile, srcdir)
+        else:
+            print("Please select type of source table: it is `--xls` or `--gform`")
             return Result.BAD_ARGUMENTS
-        results = load_from_gform(source_key, srcfile)
-    elif ns.xls:
-        results = load_from_xls(source_key, srcfile, srcdir)
-    else:
-        print("Please select type of source table: it is `--xls` or `--gform`")
-        return Result.BAD_ARGUMENTS
+    except Exception as e:
+        print(f"Loading failed: {e}")
+        return Result.GENERIC_ERROR
 
     try:
         storage = LocalStorage(Path(ns.outfile))

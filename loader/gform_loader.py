@@ -63,7 +63,7 @@ def calc_distress_results(df: pd.DataFrame):
     motivation_decrease = distress_scores[motivation_decrease_cols].apply(sum,1)
 
     distress_cat = distress.apply(distress_to_cat)
-    
+
     append_column(df, "distress", distress)
     append_column(df, "distress_p", distress / MAX_DISTRESS)
     append_column(df, "distress_c", distress_cat)
@@ -85,7 +85,7 @@ def burnout_to_score(x):
         'Никогда':0,
         'Очень редко':1,
         'Редко':2,
-        'Иногда':3, 
+        'Иногда':3,
         'Часто':4,
         'Очень часто':5,
         'Ежедневно':6
@@ -110,7 +110,7 @@ def calc_burnout_results(df: pd.DataFrame):
     emotional_exhaustion_cat = emotional_exhaustion.apply(emotional_exhaustion_to_cat)
 
     depersonalization_cat = depersonalization.apply(depersonalization_to_cat)
-    
+
     reduction_of_professionalism_cat = reduction_of_professionalism.apply(reduction_of_professionalism_to_cat)
 
     burnout_p = \
@@ -159,7 +159,7 @@ def calc_lazarus_results(df: pd.DataFrame):
     coping_score = coping_df.applymap(coping_to_score)
     sex_age = df[[df.columns[1], df.columns[2]]]
     sex_age.columns = ["sex", "age"]
-    
+
     lazarus_list = [
         ['Конфронтация',                     [1,2,12,20,25,36],          'confrontation'],
         ['Дистанцирование',                  [7,8,10,15,31,34],          'distancing'],
@@ -179,9 +179,9 @@ def calc_lazarus_results(df: pd.DataFrame):
 
         indicator_data = pd.concat([sex_age, indicator_score], axis=1)
         indicator_data['indicator'] = indicator
-        
+
         indicator_data['sex'] = indicator_data['sex'].str.lower()
-        
+
         indicator_data.loc[indicator_data['age'] == 'до 20 лет', ['age']] = 'До 20 лет'
         indicator_data.loc[indicator_data['age'] == '31-45 лет', ['age']] = 'от 31 до 45 лет'
         indicator_data.loc[indicator_data['age'] == '21-30 лет', ['age']] = 'от 21 до 30 лет'
